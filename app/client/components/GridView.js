@@ -48,6 +48,8 @@ const {showTooltip} = require('app/client/ui/tooltips');
 const {parsePasteForView} = require("./BaseView2");
 const {NEW_FILTER_JSON} = require('app/client/models/ColumnFilter');
 const {CombinedStyle} = require("app/client/models/Styles");
+const {infoToggle} = require('../ui/InfoToggle');
+const {ColumnInfo} = require('../ui/ColumnInfo');
 
 // A threshold for interpreting a motionless click as a click rather than a drag.
 // Anything longer than this time (in milliseconds) should be interpreted as a drag
@@ -1065,9 +1067,32 @@ GridView.prototype.buildDom = function() {
                   const btn = ev.currentTarget.querySelector('.g-column-menu-btn');
                   if (btn) { btn.click(); }
                 }),
-                dom('div.g-column-label',
-                  kf.editableLabel(self.isPreview ? field.label : field.displayLabel, isEditingLabel, renameCommands),
-                  dom.on('mousedown', ev => isEditingLabel() ? ev.stopPropagation() : true)
+                dom.on('contextinfo', ev => {
+                  // This is a little hack to position the info the same way as with a click
+                  ev.preventDefault();
+                  const btn = ev.currentTarget.querySelector('.g-column-info-btn');
+                  if (btn) {btn.click();}
+                }),
+                dom('div.g-column-label-and-desc',
+                  kd.style('display', 'flex'),
+                  kd.style('justify-content', 'center'),
+                  kd.style('align-items', 'center'),
+                  kd.style('gap', '5px'),
+                  infoToggle(null,
+                    kd.cssClass('g-column-info-menu'),
+                    kd.cssClass('g-column-info-btn'),
+                    // Prevent mousedown on the dropdown triangle from initiating column drag.
+                    dom.on('mousedown', () => false),
+                    // TODO : double click and not only one click
+                    // TODO : if user has no right show only text not editable
+                    dom.on('click', (ev) => this.maybeSelectColumn(ev.currentTarget.parentNode, field)),
+                    menu(ctl => this.columnInfo(ctl, this.getSelection(), field, filterTriggerCtl)),
+                    testId('column-info-trigger'),
+                  ),
+                  dom('div.g-column-label',
+                    kf.editableLabel(self.isPreview ? field.label : field.displayLabel, isEditingLabel, renameCommands),
+                    dom.on('mousedown', ev => isEditingLabel() ? ev.stopPropagation() : true)
+                  ),
                 ),
                 dom.on("mouseenter", () => self.changeHover(field._index())),
                 dom.on("mouseleave", () => self.changeHover(-1)),
@@ -1605,6 +1630,14 @@ GridView.prototype.dropCols = function() {
 
 // ===========================================================================
 // CONTEXT MENUS
+
+GridView.prototype.columnInfo = function(ctl, copySelection, field) {
+  this.ctxMenuHolder.autoDispose(ctl);
+  return ColumnInfo(this, {
+    origColumn: field.column.peek(),
+    isReadonly: this.gristDoc.isReadonly.get() || this.isPreview,
+  })
+};
 
 GridView.prototype.columnContextMenu = function(ctl, copySelection, field, filterTriggerCtl) {
   const selectedColIds = copySelection.colIds;
