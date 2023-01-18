@@ -16,25 +16,12 @@ interface IColumnInfo {
   isReadonly: boolean;
 }
 
-
 export function ColumnInfo(owner: MultiHolder, options: IColumnInfo) {
   const { origColumn, isReadonly } = options;
-
-  // build cursor position observable
-  // const cursor = owner.autoDispose(ko.computed(() => {
-  //   const vsi = this._gristDoc.viewModel.activeSection?.().viewInstance();
-  //   return vsi?.cursor.currentPosition() ?? {};
-  // }));
 
   const editedLabel = Observable.create(owner, origColumn.label.peek());
   const editableColId = Computed.create(owner, editedLabel, (use, edited) =>
     '$' + (edited ? sanitizeIdent(edited) : use(origColumn.colId)));
-  // let editor: HTMLInputElement | undefined;
-  // owner.autoDispose(
-  //   cursor.subscribe(() => {
-  //     editor?.blur();
-  //   })
-  // );
 
   const editedDescription = Observable.create(owner, '');
 
@@ -44,10 +31,10 @@ export function ColumnInfo(owner: MultiHolder, options: IColumnInfo) {
       dom.cls(cssBlockedCursor.className, isReadonly),
       cssColLabelBlock(
         cssInput(editedLabel,
-          // dom.on('input', (ev, elem) => { editedLabel.set(elem.value); }),
           dom.boolAttr('readonly', isReadonly),
           testId('field-label'),
         ),
+        // TODO : make the printed value change when save
         dom('div.g-column-id',
           t("COLUMN ID: "),
           editableColId.get(),
@@ -65,7 +52,7 @@ export function ColumnInfo(owner: MultiHolder, options: IColumnInfo) {
     cssRow(
       cssSaveButton(
         t("Save"),
-        dom.on('click', async () => { await origColumn.label.saveOnly(editedLabel.get()); editedLabel.set(''); }),
+        dom.on('click', async () => { await origColumn.label.saveOnly(editedLabel.get()); }),
       ),
       cssCancelButton(
         t("Cancel"),
